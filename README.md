@@ -1,7 +1,7 @@
 reddit-ToR-modtools
 ===================
 
-Based on [DEADB33F's original modtools](http://userscripts.org/scripts/show/116254). Includes 
+Based on [DEADB33F's original modtools](http://userscripts.org/scripts/show/116254). Includes: 
 
 - Ban button next to user names. 
 - GUI improvements to the removal reasons popup.
@@ -10,9 +10,17 @@ Based on [DEADB33F's original modtools](http://userscripts.org/scripts/show/1162
 - Ability to define generic footers and headers. (`<header>` & `<footer>`)
 - Select multiple reasons at once.
 
+New tokens:
+- {domain} the domain of the removed submission.
+- {link} the link of the removed submission (same as {url} for self-posts)
+- {reason} this is the reason something was removed or someone was banned.  It should not be used/will not work without <logsub>.
+- {loglink} the link to the removal log thread.  It should not be used/will not work without <logsub>.
 
 
-This version is fully compatible with the css reasons of DEADB33F's original modtools. Reasons for this version should be put in <removereasons2> brackets. Example as it is used in /r/theoryofreddit: 
+
+This version is fully compatible with the css reasons of DEADB33F's original modtools. Reasons for this version should be put in `<removereasons2>` brackets. Example as it is used in /r/theoryofreddit: 
+
+
     <removereasons2>
 
     <header>Thank you for your {kind}! Unfortunately, your {kind} has been removed for the following reason(s):</header>
