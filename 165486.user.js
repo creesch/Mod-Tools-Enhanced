@@ -46,7 +46,7 @@ function modtools() {
                 url: thing.find('.buttons:first .first a').attr('href'),
                 link: thing.find('a.title').attr('href'),
                 domain: thing.find('span.domain:first').text().replace('(', '').replace(')', '')
-            };                                                                                                                                
+            };
 
         if (!data.subreddit || notEnabled.indexOf(data.subreddit) != -1) return;
 
@@ -99,22 +99,22 @@ function modtools() {
             data.footer = '\n\n' + (XML.find('footer').text() || '');
             data.logsub = (XML.find('logsub').text() || '');
             data.logtitle = (XML.find('logtitle').text() || 'Removed: {kind} by /u/{author}  to /r/{subreddit}');
-            
+
             // Only show removal reason leaver if we have a logsub.
             var display = data.logsub ? 'show' : 'none';
 
             // Make box & add reason radio buttons
-                var popup = $('\
+            var popup = $('\
                 <div class="reason-popup" id="reason-popup-' + data.subreddit + '" >\
                     <attrs />\
 					<div class="reason-popup-content"> \
 					<h2>Reason for /r/' + data.subreddit + '/ :</h2><span> \
-					<p>Removing: <a href="'+data.url+'" target="_blank">'+data.title+'</a></p>\
-					<p> <input type="checkbox" id="include-header" checked="true"> Include header. </input><br> '+data.header+'</span></p> \
+					<p>Removing: <a href="' + data.url + '" target="_blank">' + data.title + '</a></p>\
+					<p> <input type="checkbox" id="include-header" checked="true"> Include header. </input><br> ' + data.header + '</span></p> \
 					<label id="reason-header" style="display:none">' + data.header + '</label> \
                     <label id="reason-footer" name="footer" style="display:none">' + data.footer + '</label> \
                     <table><tbody /></table>\
-                    <p><input type="checkbox" id="include-footer" checked="true"> Include footer. </input><br> '+data.footer+'</span> </p> \
+                    <p><input type="checkbox" id="include-footer" checked="true"> Include footer. </input><br> ' + data.footer + '</span> </p> \
 					<p><label style="display:' + display + '">  Log Reason(s): </label> \
                     <input id="logreason" style="display:' + display + '" type="text" name="logreason" value="' + data.logreason + '"> \
 					<label style="display:' + display + '"> <br>(Used for posting a log to /r/' + data.logsub + '. Will only be used when "send" is clicked.) </label></p> \
@@ -131,12 +131,12 @@ function modtools() {
 						<div>\
                     <div>\
                 <div>')
-                    .appendTo('body')
-                    .css({
-                    display: 'block'
-                })
-                    .find('attrs').attr(data).end(),
-                    i = 0;
+                .appendTo('body')
+                .css({
+                display: 'block'
+            })
+                .find('attrs').attr(data).end(),
+                i = 0;
 
             XML.find('reason').each(function () {
                 popup.find('tbody').append('<tr><th><input type="checkbox" name="reason-' + data.subreddit + '" id="reason-' + data.subreddit + '-' + i + '"></th><td><label for="reason-' + data.subreddit + '-' + (i++) + '">' + this.innerHTML + '<BR></label></td></tr>')
@@ -199,23 +199,23 @@ function modtools() {
 
         // Check if reason checked
         if (!checked.length) return status.text('error, no reason selected');
-        
+
         // Get reason text
         checked.parent().next().children().contents().each(function () {
-            reason += this.tagName == 'BR' ? '\n\n' : this.value || this.textContent 
+            reason += this.tagName == 'BR' ? '\n\n' : this.value || this.textContent
         });
-        
-        
-        
+
+
+
         // Add header and footer to reason, if they are selected.
-        if ($('#include-header').is(':checked')){
+        if ($('#include-header').is(':checked')) {
             reason = header + reason;
         }
-        
-        if ($('#include-footer').is(':checked')){
+
+        if ($('#include-footer').is(':checked')) {
             reason = reason + footer;
         }
-        
+
 
         for (i in data) {
             var pattern = new RegExp('{' + i + '}', 'mig');
@@ -228,14 +228,14 @@ function modtools() {
         // check if we need to make a puplic log post and if we have all the data
         if (data.logsub) {
             if (!logreason) return status.text('error, public log reason missing');
-            
+
             // Set log reason to entered reason.
             logtitle = logtitle.replace('{reason}', logreason);
         }
 
         function removalmessage_pm(is_tom) {
             if (is_tom == 'no_tom') {} else {
-                
+
                 reason = reason.replace('{loglink}', is_tom);
             }
             // Reply to submission/comment...
@@ -284,35 +284,31 @@ function modtools() {
             $.post('/api/submit', {
                 kind: 'link',
                 resubmit: 'true',
-                url: data.url, 
+                url: data.url,
                 uh: reddit.modhash,
-                title: removequotes(logtitle), 
+                title: removequotes(logtitle),
                 sr: data.logsub,
                 api_type: 'json'
             })
                 .done(function (data) {
-                
                 removalmessage_pm(data.json.data.url);
-				var removalid = data.json.data.url;
-				removalid = removalid.match(/http:\/\/www.reddit.com\/r\/.+?\/comments\/([^\/]+?)\/.*/);
-				removalid = 't3_'+removalid[1];
-						  
-					$.post('/api/approve', {
-						id: removalid,
-						uh: reddit.modhash
-					})		
-					
-				console.log(removalid);
+                var removalid = data.json.data.url;
+                removalid = removalid.match(/http:\/\/www.reddit.com\/r\/.+?\/comments\/([^\/]+?)\/.*/);
+                removalid = 't3_' + removalid[1];
+
+                $.post('/api/approve', {
+                    id: removalid,
+                    uh: reddit.modhash
+                })
+
+                console.log(removalid);
                 console.log(data.json.data.url);
-                return;     						
+                return;
             });
 
         } else {
             removalmessage_pm('no_tom');
         }
-
-
-
 
     });
 
@@ -850,15 +846,15 @@ function modtools() {
                         api_type: 'json'
                     })
                         .done(function (data) {
-						var removalid = data.json.data.url;
-						removalid = removalid.match(/http:\/\/www.reddit.com\/r\/.+?\/comments\/([^\/]+?)\/.*/);
-						removalid = 't3_'+removalid[1];
-						  
-						    $.post('/api/approve', {
-						        id: removalid,
-						        uh: reddit.modhash
-							})												
-						console.log(removalid);
+                        var removalid = data.json.data.url;
+                        removalid = removalid.match(/http:\/\/www.reddit.com\/r\/.+?\/comments\/([^\/]+?)\/.*/);
+                        removalid = 't3_' + removalid[1];
+
+                        $.post('/api/approve', {
+                            id: removalid,
+                            uh: reddit.modhash
+                        })
+                        console.log(removalid);
                         console.log(data.json.data.url);
                         return;
                     });
