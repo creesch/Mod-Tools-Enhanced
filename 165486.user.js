@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name        reddit.com - Mod tools - ToR version
+// @name        Mod Tools 5
 // @namespace   r.com/u/creesch/modifiedmodtools
-// @version 2.6
+// @version 4.9
 // @include     http://www.reddit.com/*
 // @downloadURL http://userscripts.org/scripts/source/165486.user.js
 // @run-at document-start
@@ -11,118 +11,111 @@ function modtools() {
     console.log('currenturl?' + currenturl);
     var notEnabled = [''];
 
+    function removequotes(string) {
+        return string.replace(/['"]/g, '');
+    }
+
+
     // Open reason dropdown when we remove something as ham.
     $('.big-mod-buttons>span>.pretty-button.neutral, .remove-button').live('click', openRemovalPopup);
 
     function openRemovalPopup(event) {
         var thingclasses = $(this).parents('div.thing').attr('class');
         console.log(thingclasses);
-        if (thingclasses.match(/\bcomment\b/)) {} else {
-            // Close popup if we click outside of it
+        if (thingclasses.match(/\bcomment\b/)) return;
+        // Close popup if we click outside of it, disabled for now since it is causing a annoyance 
 
-            $(document).mouseup(function (e) {
-                var container = $(".reason-popup-content");
+        //    $(document).mouseup(function (e) {
+        //        var container = $(".reason-popup-content");
 
-                if (container.has(e.target).length === 0) {
-                    $(".reason-popup").hide();
-                }
-            });
+        //        if (container.has(e.target).length === 0) {
+        //             $(".reason-popup").hide();
+        //        }
+        //     });
 
-            // Get link/comment attributes
-            var button = $(this),
-                thing = button.thing(),
-                data = {
-                    subreddit: thing.find('a.subreddit').text() || reddit.post_site || thing.find('.buttons .first a').attr('href').match(/\/r\/(\w+)\//)[1],
-                    fullname: thing.thing_id(),
-                    author: thing.find('a.author:first').text(),
-                    title: thing.find('a.title').length ? '"' + thing.find('a.title').text() + '"' : '',
-                    kind: thing.hasClass('link') ? 'submission' : 'comment',
-                    mod: reddit.logged,
-                    url: thing.find('.buttons:first .first a').attr('href')
-                };
+        // Get link/comment attributes
+        var button = $(this),
+            thing = button.thing(),
+            data = {
+                subreddit: thing.find('a.subreddit').text() || reddit.post_site || thing.find('.buttons .first a').attr('href').match(/\/r\/(\w+)\//)[1],
+                fullname: thing.thing_id(),
+                author: thing.find('a.author:first').text(),
+                title: thing.find('a.title').length ? '"' + thing.find('a.title').text() + '"' : '',
+                kind: thing.hasClass('link') ? 'submission' : 'comment',
+                mod: reddit.logged,
+                url: thing.find('.buttons:first .first a').attr('href'),
+                link: thing.find('a.title').attr('href'),
+                domain: thing.find('span.domain:first').text().replace('(', '').replace(')', '')
+            };                                                                                                                                
 
-            if (!data.subreddit || notEnabled.indexOf(data.subreddit) != -1) return;
+        if (!data.subreddit || notEnabled.indexOf(data.subreddit) != -1) return;
 
-            // Set attributes and open reason box if one already exists for this subreddit
-            var popup = $('#reason-popup-' + data.subreddit)
-            if (popup.length) {
-                popup.css({
-                    display: 'block'
-                })
-                    .find('attrs').attr(data)
-                    .end().find('.status').hide();
-                button.find('.yes').click();
-                return false;
-            }
+        // Set attributes and open reason box if one already exists for this subreddit
+        var popup = $('#reason-popup-' + data.subreddit)
+        if (popup.length) {
+            popup.css({
+                display: 'block'
+            })
+                .find('attrs').attr(data)
+                .end().find('.status').hide();
+            button.find('.yes').click();
+            return false;
+        }
 
-            // If not, build a new one, getting the XML from the stylesheet
-            $.get('http://www.reddit.com/r/' + data.subreddit + '/about/stylesheet.json').success(function (response) {
+        // If not, build a new one, getting the XML from the stylesheet
+        $.get('http://www.reddit.com/r/' + data.subreddit + '/about/stylesheet.json').success(function (response) {
 
-                console.log('building reasonleaver', response)
-                if (!response.data) return notEnabled.push(data.subreddit);
+            console.log('building reasonleaver', response)
+            if (!response.data) return notEnabled.push(data.subreddit);
 
-                // See if this subreddit is configured for leaving reasons
-                var match = response.data.stylesheet.replace(/\n+|\s+/g, ' ')
+            // See if this subreddit is configured for leaving reasons using <removalreasons2>
+            var match = response.data.stylesheet.replace(/\n+|\s+/g, ' ')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .match(/<removereasons2>.+<\/removereasons2>/i);
+
+            // Try falling back to <removalreasons>
+            if (!match) {
+                match = response.data.stylesheet.replace(/\n+|\s+/g, ' ')
                     .replace(/&lt;/g, '<')
                     .replace(/&gt;/g, '>')
                     .match(/<removereasons>.+<\/removereasons>/i);
-                if (!match) return notEnabled.push(data.subreddit);
+            }
 
-                button.find('.yes').click();
+            // Neither can be found.	
+            if (!match) return notEnabled.push(data.subreddit);
 
-                // Create valid XML from parsed string
-                var XML = $(match[0].replace(/\{subreddit\}/gi, data.subreddit));
+            button.find('.yes').click();
 
-                // Get PM subject line
-                data.subject = (XML.find('pmsubject').text() || 'Your {kind} was removed from {subreddit}');
+            // Create valid XML from parsed string
+            var XML = $(match[0].replace(/\{subreddit\}/gi, data.subreddit));
 
-                function removequotes(string) {
-                    return string.replace(/['"]/g, '');
-                }
+            // Get PM subject line
+            data.subject = (XML.find('pmsubject').text() || 'Your {kind} was removed from {subreddit}');
 
+            // Add additinal data that is found in the CSS.
+            data.logreason = (XML.find('logreason').text() || '');
+            data.header = (XML.find('header').text() + '\n\n' || '');
+            data.footer = '\n\n' + (XML.find('footer').text() || '');
+            data.logsub = (XML.find('logsub').text() || '');
+            data.logtitle = (XML.find('logtitle').text() || 'Removed: {kind} by /u/{author}  to /r/{subreddit}');
+            
+            // Only show removal reason leaver if we have a logsub.
+            var display = data.logsub ? 'show' : 'none';
 
-                // Make box & add reason radio buttons
-                console.log(removequotes(data.title));
-                if (data.subreddit == 'TheoryOfReddit' || data.subreddit == 'creesch_test') {
-                    var popup = $('\
+            // Make box & add reason radio buttons
+                var popup = $('\
                 <div class="reason-popup" id="reason-popup-' + data.subreddit + '" >\
                     <attrs />\
 					<div class="reason-popup-content"> \
-                    <h2>Reason:</h2><span>( /r/' + data.subreddit + '/ )\
-					<table><tbody /></table>\
-                    <div class="tom-reasons"><br>\
-					ToM Reason(s):<br><input type="text" name="tom_reason" value="[EDITME]"> <br>\
-					This will only make a tom post if you use "send" if you use "no reason" it will leave it to you.\
-					<input type="hidden" name="tom_author" value="' + data.author + '"> \
-					<input type="hidden" name="tom_title" value="' + removequotes(data.title) + '"> \
-					<input type="hidden" name="tom_url" value="' + data.url + '"> \
-					<input type="hidden" name="tom_or_not" value="tom"> \
-					<br><br></div>\
-					<div class="buttons">\
-                        <label for="type-PM-' + data.subreddit + '"><input class="reason-type" type="radio" id="type-PM-' + data.subreddit + '" value="PM"    name="type-' + data.subreddit + '"' + (localStorage.getItem('reason-type') == 'PM' ? ' checked="1"' : '') + '>PM</label> / \
-                        <label for="type-reply-' + data.subreddit + '"><input class="reason-type" type="radio" id="type-reply-' + data.subreddit + '" value="reply" name="type-' + data.subreddit + '"' + (localStorage.getItem('reason-type') == 'reply' ? ' checked="1"' : '') + '>reply</label> / \
-                        <label for="type-both-' + data.subreddit + '"><input class="reason-type" type="radio" id="type-both-' + data.subreddit + '" value="both"  name="type-' + data.subreddit + '"' + (localStorage.getItem('reason-type') == 'both' ? ' checked="1"' : '') + '>both</label>\
-                        <span class="right">\
-                            <span class="status error">saving....</span>\
-                            <button class="save">send</button>\
-                            <button class="cancel">no reason</button>\
-                        </span>\
-						<div>\
-                    <div>\
-                <div>')
-                        .appendTo('body')
-                        .css({
-                        display: 'block'
-                    })
-                        .find('attrs').attr(data).end(),
-                        i = 0;
-                } else {
-                    console.log('computer says no...');
-                    var popup = $('\
-                <div class="reason-popup" id="reason-popup-' + data.subreddit + '" >\
-                    <attrs />\
-                    <div class="reason-popup-content"> \
-					<h2>Reason:</h2><span>( /r/' + data.subreddit + '/ )\
+					<h2>Reason:</h2><span>( /r/' + data.subreddit + '/ ) | \
+					<input type="checkbox" id="include-header" checked="true"> Include header. | </input> \
+                    <input type="checkbox" id="include-footer" checked="true"> Include footer. </input> \
+					<label style="display:' + display + '"> | Log Reason(s): </label> \
+                    <input id="logreason" style="display:' + display + '" type="text" name="logreason" value="' + data.logreason + '"> \
+					<label style="display:' + display + '"> (This will only make a post to /r/' + data.logsub + '. Selecting "no reason" it will leave it to you.) </label> \
+					<label id="reason-header" style="display:none">' + data.header + '</label> \
+                    <label id="reason-footer" name="footer" style="display:none">' + data.footer + '</label> \
                     <table><tbody /></table>\
                     <div class="buttons">\
                         <label for="type-PM-' + data.subreddit + '"><input class="reason-type" type="radio" id="type-PM-' + data.subreddit + '" value="PM"    name="type-' + data.subreddit + '"' + (localStorage.getItem('reason-type') == 'PM' ? ' checked="1"' : '') + '>PM</label> / \
@@ -137,29 +130,28 @@ function modtools() {
 						<div>\
                     <div>\
                 <div>')
-                        .appendTo('body')
-                        .css({
-                        display: 'block'
-                    })
-                        .find('attrs').attr(data).end(),
-                        i = 0;
-                }
+                    .appendTo('body')
+                    .css({
+                    display: 'block'
+                })
+                    .find('attrs').attr(data).end(),
+                    i = 0;
 
-                XML.find('reason').each(function () {
-                    popup.find('tbody').append('<tr><th><input type="radio" name="reason-' + data.subreddit + '" id="reason-' + data.subreddit + '-' + i + '"></th><td><label for="reason-' + data.subreddit + '-' + (i++) + '">' + this.innerHTML + '</label></td></tr>')
-                });
-
-                // Pre fill reason input elements which have IDs.
-                popup.find('td input[id],td textarea[id]').each(function () {
-                    this.value = localStorage.getItem(this.id = 'reason-input-' + data.subreddit + '-' + this.id) || this.value
-                });
-                popup.find('td select[id]').each(function () {
-                    this.selectedIndex = localStorage.getItem(this.id = 'reason-input-' + data.subreddit + '-' + this.id) || this.selectedIndex
-                });
+            XML.find('reason').each(function () {
+                popup.find('tbody').append('<tr><th><input type="checkbox" name="reason-' + data.subreddit + '" id="reason-' + data.subreddit + '-' + i + '"></th><td><label for="reason-' + data.subreddit + '-' + (i++) + '">' + this.innerHTML + '<BR></label></td></tr>')
             });
 
-            return false;
-        }
+            // Pre fill reason input elements which have IDs.
+            popup.find('td input[id],td textarea[id]').each(function () {
+                this.value = localStorage.getItem(this.id = 'reason-input-' + data.subreddit + '-' + this.id) || this.value
+            });
+            popup.find('td select[id]').each(function () {
+                this.selectedIndex = localStorage.getItem(this.id = 'reason-input-' + data.subreddit + '-' + this.id) || this.selectedIndex
+            });
+        });
+
+        return false;
+
     };
 
     $('body').delegate('.reason-popup', 'click', function (e) {
@@ -182,10 +174,14 @@ function modtools() {
         var button = $(this),
             popup = button.parents('.reason-popup'),
             notifyBy = popup.find('.reason-type:checked').val(),
-            checked = popup.find('th input[type=radio]:checked'),
+            checked = popup.find('th input[type=checkbox]:checked'),
             status = popup.find('.status').show(),
             attrs = popup.find('attrs'),
             subject = attrs.attr('subject'),
+            logtitle = attrs.attr('logtitle'),
+            header = $('#reason-header').text(),
+            footer = $('#reason-footer').text(),
+            logreason = $("#logreason").val(),
             reason = '',
             data = {
                 subreddit: '',
@@ -194,28 +190,52 @@ function modtools() {
                 title: '',
                 kind: '',
                 mod: '',
-                url: ''
+                url: '',
+                link: '',
+                domain: '',
+                logsub: ''
             };
 
         // Check if reason checked
-        if (!checked.length) return status.text('error, no reason selected')
-
+        if (!checked.length) return status.text('error, no reason selected');
+        
         // Get reason text
         checked.parent().next().children().contents().each(function () {
-            reason += this.tagName == 'BR' ? '\n\n' : this.value || this.textContent
+            reason += this.tagName == 'BR' ? '\n\n' : this.value || this.textContent 
         });
+        
+        
+        
+        // Add header and footer to reason, if they are selected.
+        if ($('#include-header').is(':checked')){
+            reason = header + reason;
+        }
+        
+        if ($('#include-footer').is(':checked')){
+            reason = reason + footer;
+        }
+        
 
         for (i in data) {
             var pattern = new RegExp('{' + i + '}', 'mig');
             data[i] = attrs.attr(i);
             reason = reason.replace(pattern, data[i]);
             subject = subject.replace(pattern, data[i]);
+            logtitle = logtitle.replace(pattern, data[i]);
+        }
+
+        // check if we need to make a puplic log post and if we have all the data
+        if (data.logsub) {
+            if (!logreason) return status.text('error, public log reason missing');
+            
+            // Set log reason to entered reason.
+            logtitle = logtitle.replace('{reason}', logreason);
         }
 
         function removalmessage_pm(is_tom) {
             if (is_tom == 'no_tom') {} else {
-                console.log(reason);
-                reason = reason + '\n\n If you would like to appeal this decision or continue the discussion, [please feel free to do so here](' + is_tom + ').';
+                
+                reason = reason.replace('{loglink}', is_tom);
             }
             // Reply to submission/comment...
             if (notifyBy == 'reply' || notifyBy == 'both') $.post('/api/comment', {
@@ -256,36 +276,24 @@ function modtools() {
         }
 
 
+        // If logsub is not empty we should log the removal.
+        if (data.logsub) {
 
-        if ($("input[name='tom_or_not']").val() == 'tom') {
-            var tom_author = $("input[name='tom_author']").val();
-            var tom_title = $("input[name='tom_title']").val();
-            console.log(tom_title);
-            var tom_reason = $("input[name='tom_reason']").val();
+            console.log(reddit.modhash);
+            $.post('/api/submit', {
+                kind: 'link',
+                resubmit: 'true',
+                url: data.url, 
+                uh: reddit.modhash,
+                title: removequotes(logtitle), 
+                sr: data.logsub,
+                api_type: 'json'
+            })
+                .done(function (data) {
+                console.log(data.json.data.url);
+                removalmessage_pm(data.json.data.url);
+            });
 
-            if (tom_reason == '[EDITME]') {
-                tom_reason = prompt("You forgot to put in a reason for the tom removal", "[inappropriate]");
-            }
-
-            if (tom_reason != '[EDITME]') {
-                console.log(reddit.modhash);
-                $.post('/api/submit', {
-                    kind: 'link',
-                    resubmit: 'true',
-                    url: $("input[name='tom_url']").val(),
-                    uh: reddit.modhash,
-                    title: '[' + tom_author + '] ' + tom_title + ' ' + tom_reason,
-                    sr: 'TheoryOfModeration',
-                    api_type: 'json'
-                })
-                    .done(function (data) {
-                    console.log(data.json.data.url);
-                    removalmessage_pm(data.json.data.url);
-                });
-            } else {
-                removalmessage_pm('no_tom');
-                alert('No ToM post mode since the reason was still missing.');
-            }
         } else {
             removalmessage_pm('no_tom');
         }
@@ -772,6 +780,72 @@ function modtools() {
 
         // User ban button pressed
 
+        function postbanlog(subreddit, author) {
+            data = {
+                subreddit: subreddit,
+                author: author,
+                title: 'banned',
+                logsub: '',
+                logtitle: '',
+                logreason: '',
+                url: 'http://www.reddit.com/user/' + author
+            };
+
+
+            if (notEnabled.indexOf(data.subreddit) != -1) return;
+
+            $.get('http://www.reddit.com/r/' + data.subreddit + '/about/stylesheet.json').success(function (response) {
+                if (!response.data) return notEnabled.push(data.subreddit);
+
+                // See if this subreddit is configured for leaving reasons using <removalreasons2>
+                var match = response.data.stylesheet.replace(/\n+|\s+/g, ' ')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .match(/<removereasons2>.+<\/removereasons2>/i);
+
+                // No fallback needed in this case for <removalreasons> since we are only looking for a logsub
+                if (!match) return notEnabled.push(data.subreddit);
+
+                // Create valid XML from parsed string
+                var XML = $(match[0].replace(/\{subreddit\}/gi, data.subreddit));
+                data.logsub = (XML.find('logsub').text() || '');
+                data.logtitle = (XML.find('bantitle').text() || '/u/{author} has been {title} from /r/{subreddit} for {reason}');
+
+                if (!data.logsub) {
+                    return;
+                } else {
+                    data.logreason = prompt("What is the reason for banning this user?", "-");
+                    console.log('0' + data.logtitle);
+                    console.log('0' + data.logreason);
+                    console.log('0' + data.title);
+                    console.log('0' + data.logtitle);
+
+                    data.logtitle = data.logtitle.replace('{reason}', data.logreason);
+                    data.logtitle = data.logtitle.replace('{title}', data.title);
+                    data.logtitle = data.logtitle.replace('{author}', data.author);
+                    data.logtitle = data.logtitle.replace('{subreddit}', data.subreddit);
+
+                    console.log('2' + data.logtitle);
+
+                    $.post('/api/submit', {
+                        kind: 'link',
+                        resubmit: 'true',
+                        url: data.url, //$("input[name='tom_url']").val(),
+                        uh: reddit.modhash,
+                        title: removequotes(data.logtitle), //'[' + data.author + '] ' + removequotes(data.title) + ' [' + data.logreason + '] ',
+                        sr: data.logsub,
+                        api_type: 'json'
+                    })
+                        .done(function (data) {
+                        console.log(data.json.data.url);
+                        return;
+                    });
+
+
+                }
+            });
+        }
+
         $('.user-ban-button').live('click', function () {
 
             var banauthor = $(this).attr('user');
@@ -780,6 +854,7 @@ function modtools() {
 
             var confirmban = confirm("Are you sure you want to ban " + banauthor + " from /r/" + bansubreddit + "?");
             if (confirmban) {
+                postbanlog(bansubreddit, banauthor);
                 $.post('/api/friend', {
                     uh: reddit.modhash,
                     type: 'banned',
@@ -919,7 +994,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
         .reason-popup tbody tr{ vertical-align:top; border:1px solid rgb(187, 187, 187);display:block;margin-bottom: 5px;font-size: 115%;font-family: "Segoe UI", Frutiger, "Frutiger Linotype", "Dejavu Sans", "Helvetica Neue", Arial, sans-serif;padding:5px }\
         .reason-popup th{ padding-right:10px }\
         .reason-popup .buttons{ padding-top:10px }\
-		.reason-popup .reason-popup-content { position: relative; max-width: 1000px; margin: 0 auto; padding: 10px; background-color: white; border: solid 1px gray; }\
+		.reason-popup .reason-popup-content { position: relative; top: 20px; max-width: 1000px; margin: 0 auto; padding: 10px; background-color: white; border: solid 1px gray; }\
         \
         .choice.dashed{border-top:1px dashed}\
         .thing.approved{background-color:paleGreen}\
