@@ -6,8 +6,8 @@ Based on [DEADB33F's original modtools](http://userscripts.org/scripts/show/1162
 - Ban button next to user names. 
 - GUI improvements to the removal reasons popup.
 - No popup when removing comments. 
-- Support for logging removals and bans to a log subreddit. (includes the adition of <logsub>, <logtitle>, <bantitle>, <logreason> to css configuration)
-- Ability to define generic footers and headers. (<header> & <footer>)
+- Support for logging removals and bans to a log subreddit. (includes the adition of `<logsub>`, `<logtitle>`, `<bantitle>`, `<logreason>` to css configuration)
+- Ability to define generic footers and headers. (`<header>` & `<footer>`)
 - Select multiple reasons at once.
 
 
