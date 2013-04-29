@@ -291,8 +291,20 @@ function modtools() {
                 api_type: 'json'
             })
                 .done(function (data) {
-                console.log(data.json.data.url);
+                
                 removalmessage_pm(data.json.data.url);
+				var removalid = data.json.data.url;
+				removalid = removalid.match(/http:\/\/www.reddit.com\/r\/.+?\/comments\/([^\/]+?)\/.*/);
+				removalid = 't3_'+removalid[1];
+						  
+					$.post('/api/approve', {
+						id: removalid,
+						uh: reddit.modhash
+					})		
+					
+				console.log(removalid);
+                console.log(data.json.data.url);
+                return;     						
             });
 
         } else {
@@ -838,6 +850,15 @@ function modtools() {
                         api_type: 'json'
                     })
                         .done(function (data) {
+						var removalid = data.json.data.url;
+						removalid = removalid.match(/http:\/\/www.reddit.com\/r\/.+?\/comments\/([^\/]+?)\/.*/);
+						removalid = 't3_'+removalid[1];
+						  
+						    $.post('/api/approve', {
+						        id: removalid,
+						        uh: reddit.modhash
+							})												
+						console.log(removalid);
                         console.log(data.json.data.url);
                         return;
                     });
