@@ -108,16 +108,17 @@ function modtools() {
                 <div class="reason-popup" id="reason-popup-' + data.subreddit + '" >\
                     <attrs />\
 					<div class="reason-popup-content"> \
-					<h2>Reason:</h2><span>( /r/' + data.subreddit + '/ ) | \
-					<input type="checkbox" id="include-header" checked="true"> Include header. | </input> \
-                    <input type="checkbox" id="include-footer" checked="true"> Include footer. </input> \
-					<label style="display:' + display + '"> | Log Reason(s): </label> \
-                    <input id="logreason" style="display:' + display + '" type="text" name="logreason" value="' + data.logreason + '"> \
-					<label style="display:' + display + '"> (This will only make a post to /r/' + data.logsub + '. Selecting "no reason" it will leave it to you.) </label> \
+					<h2>Reason for /r/' + data.subreddit + '/ :</h2><span> \
+					<p>Removing: <a href="'+data.url+'" target="_blank">'+data.title+'</a></p>\
+					<p> <input type="checkbox" id="include-header" checked="true"> Include header. </input><br> '+data.header+'</span></p> \
 					<label id="reason-header" style="display:none">' + data.header + '</label> \
                     <label id="reason-footer" name="footer" style="display:none">' + data.footer + '</label> \
                     <table><tbody /></table>\
-                    <div class="buttons">\
+                    <p><input type="checkbox" id="include-footer" checked="true"> Include footer. </input><br> '+data.footer+'</span> </p> \
+					<p><label style="display:' + display + '">  Log Reason(s): </label> \
+                    <input id="logreason" style="display:' + display + '" type="text" name="logreason" value="' + data.logreason + '"> \
+					<label style="display:' + display + '"> <br>(Used for posting a log to /r/' + data.logsub + '. Will only be used when "send" is clicked.) </label></p> \
+					 <div class="buttons">\
                         <label for="type-PM-' + data.subreddit + '"><input class="reason-type" type="radio" id="type-PM-' + data.subreddit + '" value="PM"    name="type-' + data.subreddit + '"' + (localStorage.getItem('reason-type') == 'PM' ? ' checked="1"' : '') + '>PM</label> / \
                         <label for="type-reply-' + data.subreddit + '"><input class="reason-type" type="radio" id="type-reply-' + data.subreddit + '" value="reply" name="type-' + data.subreddit + '"' + (localStorage.getItem('reason-type') == 'reply' ? ' checked="1"' : '') + '>reply</label> / \
                         <label for="type-both-' + data.subreddit + '"><input class="reason-type" type="radio" id="type-both-' + data.subreddit + '" value="both"  name="type-' + data.subreddit + '"' + (localStorage.getItem('reason-type') == 'both' ? ' checked="1"' : '') + '>both</label>\
@@ -994,7 +995,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
         .reason-popup tbody tr{ vertical-align:top; border:1px solid rgb(187, 187, 187);display:block;margin-bottom: 5px;font-size: 115%;font-family: "Segoe UI", Frutiger, "Frutiger Linotype", "Dejavu Sans", "Helvetica Neue", Arial, sans-serif;padding:5px }\
         .reason-popup th{ padding-right:10px }\
         .reason-popup .buttons{ padding-top:10px }\
-		.reason-popup .reason-popup-content { position: relative; top: 20px; max-width: 1000px; margin: 0 auto; padding: 10px; background-color: white; border: solid 1px gray; }\
+		.reason-popup .reason-popup-content { position: relative; top:40px; max-width: 1000px; margin: 0 auto; padding: 10px; background-color: white; border: solid 1px gray; }\
+		.reason-popup .reason-popup-content span p { padding: 3px;}\
         \
         .choice.dashed{border-top:1px dashed}\
         .thing.approved{background-color:paleGreen}\
