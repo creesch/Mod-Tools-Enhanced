@@ -1,8 +1,10 @@
 // ==UserScript==
-// @name        Mod Tools 5
-// @namespace   r.com/u/creesch/modifiedmodtools
-// @version 4.9
+// @name        Mod Tools Enhanced 
+// @namespace   http://userscripts.org/scripts/show/165486
+// @version     6.0
 // @include     http://www.reddit.com/*
+// @include     http://reddit.com/*
+// @include     http://*.reddit.com/*
 // @downloadURL http://userscripts.org/scripts/source/165486.user.js
 // @run-at document-start
 // ==/UserScript==
