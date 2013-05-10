@@ -1,4 +1,4 @@
-reddit-ToR-modtools
+Mod Tools Enhanced v1.0
 ===================
 
 Based on [DEADB33F's original modtools](http://userscripts.org/scripts/show/116254). Includes: 
