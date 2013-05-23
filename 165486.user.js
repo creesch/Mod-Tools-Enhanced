@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Mod Tools Enhanced
 // @namespace   http://userscripts.org/scripts/show/165486
-// @version     6.2
+// @version     6.2.1
 // @include     http://www.reddit.com/*
 // @include     http://reddit.com/*
 // @include     http://*.reddit.com/*
@@ -620,7 +620,7 @@ function modtools() {
             $(things).prepend('<input type="checkbox" tabindex="2" style="margin:5px;float:left;"' + (allSelected ? ' checked' : '') + ' />')
                 .find('.collapsed:visible a.expand:contains("[+]")').click().end()
                 .find('.userattrs').each(addUserHistoryLink).end()
-                .find('.entry').each(addUserBanLink)
+                .find('.userattrs').each(addUserBanLink)
                 .filter('.comment').find('.flat-list.buttons:has( a:contains("parent"))').each(function () {
                 $(this).prepend('<li><a class="context" href="' + $(this).find('.first .bylink').attr('href') + '?context=2">context</a></li>');
             });
