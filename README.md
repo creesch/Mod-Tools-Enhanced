@@ -19,8 +19,8 @@ New tokens:
 
 - {domain} the domain of the removed submission.
 - {link} the link of the removed submission (same as {url} for self-posts)
-- {reason} this is the reason something was removed or someone was banned.  It should not be used/will not work without <logsub>.
-- {loglink} the link to the removal log thread.  It should not be used/will not work without <logsub>.
+- {reason} this is the reason something was removed or someone was banned.  It should not be used/will not work without `<logsub>`.
+- {loglink} the link to the removal log thread.  It should not be used/will not work without `<logsub>`.
 
 
 
