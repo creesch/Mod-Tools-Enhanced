@@ -607,10 +607,10 @@ function modtools() {
                 $(this).addClass('ban-button');
 
                 // Add button.
-                $(this).find('.userattrs').append('[<a href="javascript:void(0)" class="user-ban-button"">B</a>]');
+                 $(this).append('[<a href="javascript:void(0)" class="user-ban-button"">B</a>]');
             }
         }
-        $('.thing .entry').each(addUserBanLink);
+        $('.thing .entry .userattrs').each(addUserBanLink);
 
         //Process new things loaded by RES or flowwit.
         function processNewThings(things) {
