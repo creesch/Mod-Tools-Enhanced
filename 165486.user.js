@@ -81,13 +81,36 @@ function modtools() {
             }
 
             // Neither can be found.    
-            if (!match) return notEnabled.push(data.subreddit);
-
-            // Click yes on the removal.
-            button.find('.yes').click();
+            if (!match) return notEnabled.push(data.subreddit); 
 
             // Create valid XML from parsed string
             var XML = $(match[0].replace(/\{subreddit\}/gi, data.subreddit));
+            
+            // Get from different sub.
+            if (XML.find('getfrom')) {
+                $.get('http://www.reddit.com/r/' + XML.find('getfrom').text() + '/about/stylesheet.json').success(function (response) {
+                    if (!response.data) return showPopUp(XML);  //failed to get the new removal reasons.
+                    
+                    // Only use rr2 for <getfrom>
+                    match = response.data.stylesheet.replace(/\n+|\s+/g, ' ')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .match(/<removereasons2>.+<\/removereasons2>/i);
+                    
+                    XML = $(match[0].replace(/\{subreddit\}/gi, data.subreddit));
+                    
+                    showPopUp(XML);
+                })
+                .fail(function() {
+                    showPopUp(XML);  //failed to get the new removal reasons.
+                });
+            }
+        });
+            
+        function showPopUp(XML){
+            
+            // Click yes on the removal.
+            button.find('.yes').click();
 
             // Get PM subject line
             data.subject = (XML.find('pmsubject').text() || 'Your {kind} was removed from {subreddit}');
@@ -152,7 +175,7 @@ function modtools() {
             //popup.find('td select[id]').each(function () {
             //    this.selectedIndex = localStorage.getItem(this.id = 'reason-input-' + data.subreddit + '-' + this.id) || this.selectedIndex;
             //});
-        });
+        }
 
         return false;
     }
