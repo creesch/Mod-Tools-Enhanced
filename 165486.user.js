@@ -88,39 +88,64 @@ function modtools() {
             
             // Get from different sub.
             if (XML.find('getfrom')) {
-                $.get('http://www.reddit.com/r/' + XML.find('getfrom').text() + '/about/stylesheet.json').success(function (response) {
+                
+                // Any sub using the new 'getfrom' poperty will have to use wiki JSON.  No reason to support the old system with new features.
+                $.getJSON('http://www.reddit.com/r/'+ XML.find('getfrom').text() +'/wiki/toolbox.json', function (response) {
                     if (!response.data) return showPopUp(XML);  //failed to get the new removal reasons.
                     
-                    // Only use rr2 for <getfrom>
-                    match = response.data.stylesheet.replace(/\n+|\s+/g, ' ')
-                        .replace(/&lt;/g, '<')
-                        .replace(/&gt;/g, '>')
-                        .match(/<removereasons2>.+<\/removereasons2>/i);
+                    // Should add a check here.
+                    var rr = JSON.parse(response.data.content_md).removalReasons;
                     
-                    XML = $(match[0].replace(/\{subreddit\}/gi, data.subreddit));
+                    // Get PM subject line
+                    data.subject = rr.pmsubject || 'Your {kind} was removed from {subreddit}';
                     
-                    showPopUp(XML);
+                    // Add additinal data that is found in the wikiJSON.
+                    data.logreason = rr.logreason || '';
+                    data.header = rr.header || '';
+                    data.footer = rr.footer || '';
+                    data.logsub = rr.logsub || '';
+                    data.logtitle = rr.logtitle || 'Removed: {kind} by /u/{author}  to /r/{subreddit}';
+                    data.reasons = [];
+                    
+                    $(rr.reasons).each(function() {
+                        data.reasons.push(compressHTML(this));
+                    });
+                    
+                    showPopUp();
                 })
-                .fail(function() {
+                .error(function() {
                     showPopUp(XML);  //failed to get the new removal reasons.
                 });
             }
         });
-            
+        
+        // JSON stored HTML is uncompressed.
+        function compressHTML(src) {
+            return src.replace(/(\n+|\s+)?&lt;/g, '<').replace(/&gt;(\n+|\s+)?/g, '>').replace(/&amp;/g, '&').replace(/\n/g, '').replace(/child" >  False/, 'child">');
+        }
+        
         function showPopUp(XML){
             
             // Click yes on the removal.
             button.find('.yes').click();
 
-            // Get PM subject line
-            data.subject = (XML.find('pmsubject').text() || 'Your {kind} was removed from {subreddit}');
-
-            // Add additinal data that is found in the CSS.
-            data.logreason = XML.find('logreason').text() || '';
-            data.header = XML.find('header').text() || '';
-            data.footer = XML.find('footer').text() || '';
-            data.logsub = XML.find('logsub').text() || '';
-            data.logtitle = XML.find('logtitle').text() || 'Removed: {kind} by /u/{author}  to /r/{subreddit}';
+            // It's the old XML format, parse it.
+            if (XML) {
+                // Get PM subject line
+                data.subject = (XML.find('pmsubject').text() || 'Your {kind} was removed from {subreddit}');
+                
+                // Add additinal data that is found in the CSS.
+                data.logreason = XML.find('logreason').text() || '';
+                data.header = XML.find('header').text() || '';
+                data.footer = XML.find('footer').text() || '';
+                data.logsub = XML.find('logsub').text() || '';
+                data.logtitle = XML.find('logtitle').text() || 'Removed: {kind} by /u/{author}  to /r/{subreddit}';
+                data.reasons = [];
+                
+                XML.find('reason').each(function() {
+                    data.reasons.push(this.innerHTML);
+                });
+            }
 
             // Only show removal reason leaver if we have a logsub.
             var logDisplay = data.logsub ? '' : 'none',
@@ -162,8 +187,8 @@ function modtools() {
                 .find('attrs').attr(data).end(),
                 i = 0;
 
-            XML.find('reason').each(function () {
-                popup.find('tbody').append('<tr><th><input type="checkbox" name="reason-' + data.subreddit + '" id="reason-' + data.subreddit + '-' + i + '"></th><td><label for="reason-' + data.subreddit + '-' + (i++) + '">' + this.innerHTML + '<BR></label></td></tr>');
+            $(data.reasons).each(function () {
+                popup.find('tbody').append('<tr><th><input type="checkbox" name="reason-' + data.subreddit + '" id="reason-' + data.subreddit + '-' + i + '"></th><td><label for="reason-' + data.subreddit + '-' + (i++) + '">' + this + '<BR></label></td></tr>');
             });
 
             // Pre fill reason input elements which have IDs.
