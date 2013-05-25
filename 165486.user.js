@@ -61,92 +61,138 @@ function modtools() {
             button.find('.yes').click();
             return false;
         }
+        
+        // Try getting data from the wiki first. 404s are **much** quicker than downloading the entire stylesheet first.
+        getRemovalReasons('http://www.reddit.com/r/'+ data.subreddit +'/wiki/toolbox.json');
+    
 
-        // If not, build a new one, getting the XML from the stylesheet
-        $.get('http://www.reddit.com/r/' + data.subreddit + '/about/stylesheet.json').success(function (response) {
+        // Get the removal reasons in this order: wikiJSON, <removalreasons2>, <removalreasons>.
+        function getRemovalReasons(URL) {
+            console.log('trying: ' + URL);
+            
+            // Try the URL provided, fall back as needed.
+            $.get(URL, function (response) {  
+                
+                // This *seems* out of order, but if we got a 404 for the wiki this is the *second* call to this method,
+                // but the URL was the stylesheet. So we need this check to see if there is valid wiki data.
+                // If not, we need to try and parse the removal reasons from the CSS.
+                if (!response.data.content_md) {
+                    parseOldReasons(response);
+                    return;
+                }
+               
+                // See if we have the new wikiJSON format first.
+                var rr = JSON.parse(response.data.content_md).removalReasons || '';
+                
+                // Try to fall back to old <removalreasons>, again.  If this check fires, there is a valid toolbox page in the wiki,
+                // but for whatever reason, it doesn't have removla reasons?  (Or, this should *never* happen)
+                if (!rr) {
+                    getRemovalReasons('http://www.reddit.com/r/' + data.subreddit + '/about/stylesheet.json');
+                    return;
+                }
+                
+                // Get reason data from another sub.
+                if (rr.getfrom) {
+                    getRemovalReasons('http://www.reddit.com/r/'+ rr.getfrom +'/wiki/toolbox.json');
+                    return;
+                }
+                
+                //// OK, if we're this far, we're rocking valid data, from *this* sub, from the wiki. ////
+                
+                // Get PM subject line
+                data.subject = rr.pmsubject || 'Your {kind} was removed from {subreddit}';
+                
+                // Add additinal data that is found in the wikiJSON.  
+                // Any HTML needs to me unescaped, because we store it escaped in the wiki.
+                data.logreason = rr.logreason || '';
+                data.header = unescape(rr.header || '');
+                data.footer = unescape(rr.footer || '');
+                data.logsub = rr.logsub || '';
+                data.logtitle = rr.logtitle || 'Removed: {kind} by /u/{author} to /r/{subreddit}';
+                data.reasons = [];
+                
+                // Loop through the reasons... unescaping each.
+                $(rr.reasons).each(function() {
+                    data.reasons.push(unescape(this));
+                });
+                
+                // Show the removal reason dialog.
+                showPopUp();
+                
+            
+            }).error(function(err) {
+                // Lots of stuff going on here.
+                // If we hit a 404 on the first goround, that means the wiki page for toolbox 404'd.
+                // BUT, we could have also gotten a 404 for another reason.  So, we need to check if it's
+                // the exact 404 the wiki gives.  That 404 is JSON that has a 'reason' prop.
+                // If it's that one, we need to fall back to the wiki and try again for the old formt.
+                // Otherwise, it's just a normal 404 and we need to just push this sub to 'notEnabled'
+                
+                // The wikiJSON doesn't exist, try the CSS.
+                if (JSON.parse(err.responseText).reason){
+                                        
+                    // DAE recursion?
+                    getRemovalReasons('http://www.reddit.com/r/' + data.subreddit + '/about/stylesheet.json');
+                    return;
+                } 
+                
+                // It's not a wiki error, so it's simply not supported or another type of 404.
+                return notEnabled.push(data.subreddit);
+            });
+        }
+    
+        function parseOldReasons(response) {
+            // All of this function is the same as the old system.  Nothing new here.
+            
             if (!response.data) return notEnabled.push(data.subreddit);
-
+            
             // See if this subreddit is configured for leaving reasons using <removalreasons2>
             var match = response.data.stylesheet.replace(/\n+|\s+/g, ' ')
-                .replace(/&lt;/g, '<')
-                .replace(/&gt;/g, '>')
-                .match(/<removereasons2>.+<\/removereasons2>/i);
-
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .match(/<removereasons2>.+<\/removereasons2>/i)
+            
             // Try falling back to <removalreasons>
             if (!match) {
                 match = response.data.stylesheet.replace(/\n+|\s+/g, ' ')
-                    .replace(/&lt;/g, '<')
-                    .replace(/&gt;/g, '>')
-                    .match(/<removereasons>.+<\/removereasons>/i);
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .match(/<removereasons>.+<\/removereasons>/i);
             }
-
-            // Neither can be found.    
-            if (!match) return notEnabled.push(data.subreddit); 
-
+            
+            // Neither removal reason tag can be found, and if we got this far, we've already failed the wikiJSON tries.
+            // There is no way this sub supports any form of removal reasons.
+            if (!match) return notEnabled.push(data.subreddit);
+            
+            //// We're good, we found old removal reasons. ////
+            
             // Create valid XML from parsed string
             var XML = $(match[0].replace(/\{subreddit\}/gi, data.subreddit));
             
-            // Get from different sub.
-            if (XML.find('getfrom')) {
-                
-                // Any sub using the new 'getfrom' poperty will have to use wiki JSON.  No reason to support the old system with new features.
-                $.getJSON('http://www.reddit.com/r/'+ XML.find('getfrom').text() +'/wiki/toolbox.json', function (response) {
-                    if (!response.data) return showPopUp(XML);  //failed to get the new removal reasons.
-                    
-                    // Should add a check here.
-                    var rr = JSON.parse(response.data.content_md).removalReasons;
-                    
-                    // Get PM subject line
-                    data.subject = rr.pmsubject || 'Your {kind} was removed from {subreddit}';
-                    
-                    // Add additinal data that is found in the wikiJSON.
-                    data.logreason = rr.logreason || '';
-                    data.header = rr.header || '';
-                    data.footer = rr.footer || '';
-                    data.logsub = rr.logsub || '';
-                    data.logtitle = rr.logtitle || 'Removed: {kind} by /u/{author}  to /r/{subreddit}';
-                    data.reasons = [];
-                    
-                    $(rr.reasons).each(function() {
-                        data.reasons.push(compressHTML(this));
-                    });
-                    
-                    showPopUp();
-                })
-                .error(function() {
-                    showPopUp(XML);  //failed to get the new removal reasons.
-                });
-            }
-        });
-        
-        // JSON stored HTML is uncompressed.
-        function compressHTML(src) {
-            return src.replace(/(\n+|\s+)?&lt;/g, '<').replace(/&gt;(\n+|\s+)?/g, '>').replace(/&amp;/g, '&').replace(/\n/g, '').replace(/child" >  False/, 'child">');
+            // Get PM subject line
+            data.subject = (XML.find('pmsubject').text() || 'Your {kind} was removed from {subreddit}');
+            
+            // Add additinal data that is found in the CSS.
+            data.logreason = XML.find('logreason').text() || '';
+            data.header = XML.find('header').text() || '';
+            data.footer = XML.find('footer').text() || '';
+            data.logsub = XML.find('logsub').text() || '';
+            data.logtitle = XML.find('logtitle').text() || 'Removed: {kind} by /u/{author}  to /r/{subreddit}';
+            data.reasons = [];
+            
+            XML.find('reason').each(function() {
+                data.reasons.push(this.innerHTML);
+            });
+            
+            // SUCCESS!  Show the pop-up!
+            showPopUp();
         }
         
-        function showPopUp(XML){
+        function showPopUp() {
             
             // Click yes on the removal.
             button.find('.yes').click();
-
-            // It's the old XML format, parse it.
-            if (XML) {
-                // Get PM subject line
-                data.subject = (XML.find('pmsubject').text() || 'Your {kind} was removed from {subreddit}');
-                
-                // Add additinal data that is found in the CSS.
-                data.logreason = XML.find('logreason').text() || '';
-                data.header = XML.find('header').text() || '';
-                data.footer = XML.find('footer').text() || '';
-                data.logsub = XML.find('logsub').text() || '';
-                data.logtitle = XML.find('logtitle').text() || 'Removed: {kind} by /u/{author}  to /r/{subreddit}';
-                data.reasons = [];
-                
-                XML.find('reason').each(function() {
-                    data.reasons.push(this.innerHTML);
-                });
-            }
-
+            
             // Only show removal reason leaver if we have a logsub.
             var logDisplay = data.logsub ? '' : 'none',
                 headerDisplay = data.header ? '' : 'none',
@@ -157,7 +203,7 @@ function modtools() {
                 <div class="reason-popup" id="reason-popup-' + data.subreddit + '" >\
                     <attrs />\
                     <div class="reason-popup-content"> \
-					<h2>Reason for /r/' + data.subreddit + '/ :</h2><span> \
+                    <h2>Reason for /r/' + data.subreddit + '/ :</h2><span> \
 					<p>Removing: <a href="' + data.url + '" target="_blank">' + data.title + '</a></p>\
 					<div style="display:' + headerDisplay + '"><p><input type="checkbox" id="include-header" checked> Include header. </input><br>\
                     <label id="reason-header">' + data.header + '</label></p></div> \
