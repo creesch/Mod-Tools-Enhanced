@@ -70,8 +70,8 @@ function modtools() {
 
                     // Loop through the reasons... unescaping each.
                     $(rr.reasons).each(function () {
-                            data.reasons.push(unescape(this));
-                        });
+                            data.reasons.push(unescape(this.text));
+                    });
 
                     // Show the removal reason dialog.
                     callback(data);
@@ -147,8 +147,8 @@ function modtools() {
             data.reasons = [];
 
             XML.find('reason').each(function () {
-                    data.reasons.push(this.innerHTML);
-                });
+                data.reasons.push(this.innerHTML);
+            });
 
             // SUCCESS!  Show the pop-up!
             callback(data);
