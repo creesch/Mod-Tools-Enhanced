@@ -1,7 +1,10 @@
-reddit-ToR-modtools
-===================
+Mod Tools Enhanced 
+========
 
-Based on [DEADB33F's original modtools](http://userscripts.org/scripts/show/116254). Includes 
+Based on [DEADB33F's original modtools](http://userscripts.org/scripts/show/116254). Fully backwards compatible with the DEADB33F's modtools.
+
+
+Includes: 
 
 - Ban button next to user names. 
 - GUI improvements to the removal reasons popup.
@@ -9,15 +12,26 @@ Based on [DEADB33F's original modtools](http://userscripts.org/scripts/show/1162
 - Support for logging removals and bans to a log subreddit. (includes the adition of `<logsub>`, `<logtitle>`, `<bantitle>`, `<logreason>` to css configuration)
 - Ability to define generic footers and headers. (`<header>` & `<footer>`)
 - Select multiple reasons at once.
+- Support for RES' Never Ending Reddit.
+- Support for banning reasons.
+
+New tokens:
+
+- {domain} the domain of the removed submission.
+- {link} the link of the removed submission (same as {url} for self-posts)
+- {reason} this is the reason something was removed or someone was banned.  It should not be used/will not work without `<logsub>`.
+- {loglink} the link to the removal log thread.  It should not be used/will not work without `<logsub>`.
 
 
 
-This version is fully compatible with the css reasons of DEADB33F's original modtools. Reasons for this version should be put in <removereasons2> brackets. Example as it is used in /r/theoryofreddit: 
+This version is fully compatible with the css reasons of DEADB33F's original modtools. Reasons for this version should be put in `<removereasons2>` brackets. Example as it is used in /r/theoryofreddit: 
+
+
     <removereasons2>
 
     <header>Thank you for your {kind}! Unfortunately, your {kind} has been removed for the following reason(s):</header>
      
-     <footer>If you would like to appeal this decision or continue the discussion, [please feel free to do so here]({loglink}).</footer>
+    <footer>If you would like to appeal this decision or continue the discussion, [please feel free to do so here]({loglink}).</footer>
 
     <logsub>TheoryOfModeration</logsub>
     <logtitle>[{author}] {title} [{reason}]</logtitle>
@@ -49,3 +63,18 @@ This version is fully compatible with the css reasons of DEADB33F's original mod
     <reason><textarea id="customReason" placeholder="Enter Custom reason" /></reason>
 
     </removereasons2>
+
+### [Reddit Thread](http://www.reddit.com/r/toolbox/comments/1etr6b/mod_tools_enhanced/)
+
+---
+
+####Screenshots
+
+[New removal reasons windows](http://i.imgur.com/2Am4NQv.png), [Ban Button](http://i.imgur.com/5nbWDfH.png)
+
+
+---
+
+##[Install](http://userscripts.org/scripts/show/165486)
+
+Please install from userscripts.org.  The version hosted here is the devlopment branch, and likely unstable.
