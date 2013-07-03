@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Mod Tools Enhanced
 // @namespace   http://userscripts.org/scripts/show/165486
-// @version     6.3
+// @version     6.3.1
 // @include     http://www.reddit.com/*
 // @include     http://reddit.com/*
 // @include     http://*.reddit.com/*
@@ -297,9 +297,9 @@ function modtools() {
                 attrs = popup.find('attrs'),
                 subject = attrs.attr('subject'),
                 logtitle = attrs.attr('logtitle'),
-                header = $('#reason-header').text(),
-                footer = $('#reason-footer').text(),
-                logreason = $("#logreason").val(),
+                header = popup.find('#reason-header').text(),
+                footer = popup.find('#reason-footer').text(),
+                logreason = popup.find("#logreason").val(),
                 reason = '',
                 data = {
                     subreddit: '',
@@ -323,11 +323,11 @@ function modtools() {
                 });
 
             // Add header and footer to reason, if they are selected.
-            if ($('#include-header').is(':checked')) {
+            if (popup.find('#include-header').is(':checked')) {
                 reason = header + '\n\n' + reason;
             }
 
-            if ($('#include-footer').is(':checked')) {
+            if (popup.find('#include-footer').is(':checked')) {
                 reason = reason + '\n\n' + footer;
             }
 
