@@ -9,10 +9,6 @@
 // @run-at document-start
 // ==/UserScript==
 
-//Known bugs:
-// ban user config stuff.
-// post log sub (url undefined)
-
 function modtools() {
     var currenturl = document.URL,
         notEnabled = []; //because of the CSS fallback, we can't use TBUtils.noConfig.
@@ -113,6 +109,7 @@ function modtools() {
         // Get link/comment attributes
         var button = $(this),
             thing = button.thing(),
+            info = TBUtils.getThingInfo(thing);
             data = {
                 subreddit: thing.find('a.subreddit').text() || reddit.post_site || thing.find('.buttons .first a').attr('href').match(/\/r\/(\w+)\//)[1],
                 fullname: thing.thing_id(),
@@ -120,7 +117,7 @@ function modtools() {
                 title: thing.find('a.title').length ? '"' + thing.find('a.title').text() + '"' : '',
                 kind: thing.hasClass('link') ? 'submission' : 'comment',
                 mod: reddit.logged,
-                url: thing.find('.buttons:first .first a').attr('href'),
+                url: info.permalink,//thing.find('.buttons:first .first a').attr('href'),
                 link: thing.find('a.title').attr('href'),
                 domain: thing.find('span.domain:first').text().replace('(', '').replace(')', '')
             };
@@ -353,7 +350,7 @@ function modtools() {
             $.post('/api/submit', {
                 kind: 'link',
                 resubmit: 'true',
-                url: data.url,
+                url: data.url || data.link,
                 uh: reddit.modhash,
                 title: removequotes(logtitle),
                 sr: data.logsub,
@@ -691,7 +688,6 @@ function modtools() {
         $('.thing .entry .userattrs').each(addUserBanLink);
 
         //Process new things loaded by RES or flowwit.
-
         function processNewThings(things) {
             //add class to processed threads.
             $(things).addClass('mte-processed');
@@ -736,6 +732,7 @@ function modtools() {
         };
 
         //User history button pressed
+        /////////HERE FOR RTS///////////
         var gettingUserdata = false;
         $('.user-history-button').live('click', function () {
             $('html').one('click', function () {
@@ -744,7 +741,7 @@ function modtools() {
             });
             gettingUserdata = true;
 
-            var author = $(this).parents('.tagline').find('.author').text(),
+            var author = TBUtils.getThingInfo($(this).closest('.entry')).user,
                 commentbody = '',
                 contentBox = $('.inline-content')
                     .show().offset($(this).offset())
@@ -860,7 +857,6 @@ function modtools() {
         });
 
         // User ban button pressed. 
-
         function postbanlog(subreddit, author, reason) {
             var data = {
                 subreddit: subreddit,
@@ -871,14 +867,34 @@ function modtools() {
                 logreason: '',
                 url: 'http://www.reddit.com/user/' + author
             };
-
+            
             if (notEnabled.indexOf(data.subreddit) != -1) return;
-
+            
             // Get removal reasosn.
-            getRemovalReasons(data, function (resp) {
-                data = resp;
-                console.log(data);
-
+            getRemovalReasons(data.subreddit, function (resp) {
+                if (!resp || resp.reasons.length < 1) {
+                    notEnabled.push(data.subreddit);
+                    return;
+                }
+                
+                // Get PM subject line
+                data.subject = resp.pmsubject || 'Your {kind} was removed from {subreddit}';
+                
+                // Add additinal data that is found in the wikiJSON.  
+                // Any HTML needs to me unescaped, because we store it escaped in the wiki.
+                data.logreason = resp.logreason || '';
+                data.header = unescape(resp.header || '');
+                data.footer = unescape(resp.footer || '');
+                data.logsub = resp.logsub || '';
+                data.logtitle = resp.logtitle || 'Removed: {kind} by /u/{author} to /r/{subreddit}';
+                data.bantitle = resp.bantitle || '/u/{author} has been {title} from /r/{subreddit} for {reason}';
+                data.reasons = [];
+                
+                // Loop through the reasons... unescaping each.
+                $(resp.reasons).each(function () {
+                    data.reasons.push(unescape(this.text));
+                });
+                
                 if (!data || !data.logsub) {
                     return;
                 } else if (reason == '' || reason == undefined || reason == null) {
@@ -891,7 +907,7 @@ function modtools() {
                     data.bantitle = data.bantitle.replace('{author}', data.author);
                     data.bantitle = data.bantitle.replace('{subreddit}', data.subreddit);
                     console.log(data);
-
+                    
                     $.post('/api/submit', {
                         kind: 'link',
                         resubmit: 'true',
@@ -901,55 +917,25 @@ function modtools() {
                         sr: data.logsub,
                         api_type: 'json'
                     })
-                        .done(function (data) {
-                            var removalid = data.json.data.url;
-                            removalid = removalid.match(/http:\/\/www.reddit.com\/r\/.+?\/comments\/([^\/]+?)\/.*/);
-                            removalid = 't3_' + removalid[1];
-
-                            $.post('/api/approve', {
-                                id: removalid,
-                                uh: reddit.modhash
-                            });
-                            return;
+                    .done(function (data) {
+                        var removalid = data.json.data.url;
+                        removalid = removalid.match(/http:\/\/www.reddit.com\/r\/.+?\/comments\/([^\/]+?)\/.*/);
+                        removalid = 't3_' + removalid[1];
+                        
+                        $.post('/api/approve', {
+                            id: removalid,
+                            uh: reddit.modhash
                         });
+                        return;
+                    });
                 }
             });
         }
 
-        //////// USE TBU //////////////////
-        //////// ALSO FIND THE OTHER ////
-        function getUserAndSub(thing) {
-            var user = $(thing).find('.author:first').text(),
-                currentsub = $('.titlebox h1.redditname a').text();
-
-            // Try again.
-            if (!user) {
-                user = $(thing).closest('.entry').find('.author:first').text();
-            }
-
-            if (!currentsub) {
-                currentsub = $(thing).closest('.entry').find('.subreddit').text();
-            }
-
-            if (!currentsub) {
-                currentsub = $(thing).closest('.thing').find('.subreddit').text();
-            }
-
-            // If we still don't have a sub, we're in mod mail
-            if (!currentsub) {
-                currentsub = $(thing).closest('.entry').find('.head a:last').text().replace('/r/', '').replace('/', '').trim();
-            }
-
-            return {
-                'currentsub': currentsub,
-                'user': user
-            };
-        }
-
         $('.user-ban-button').live('click', function (e) {
             var banbutton = e.target,
-                info = getUserAndSub(this),
-                currentsub = info.currentsub,
+                info = TBUtils.getThingInfo($(this).closest('.entry')),
+                currentsub = info.subreddit,
                 user = info.user;
 
             // No such luck.
@@ -1027,15 +1013,17 @@ function modtools() {
     }
 
     // Add mod tools or mod tools toggle button if applicable
-    if (location.pathname.match(/\/about\/(?:reports|modqueue|spam|unmoderated|trials)\/?/)) addModtools();
+    if (TBUtils.isModpage) addModtools();
     if (($('body').hasClass('listing-page') || $('body').hasClass('comments-page')) && (!reddit.post_site || $('body.moderator').length)) $('<li><a href="javascript:;" accesskey="M" class="modtools-on">modtools</a></li>').appendTo('.tabmenu').click(addModtools);
 
+    /* Disabled, see below.
     // Check if we're viewing a subreddit's reports/spam/modqueue page
     if (location.pathname.match(/^\/r\/\w+\/about\/(?:reports|modqueue|spam|unmoderated)\/?$/)) {
         // Reset the modqueue cache timer for this sr
         var subdata = JSON.parse(localStorage.getItem('mq-' + reddit.logged + '-' + reddit.post_site)) || [0, 0];
         localStorage.setItem('mq-' + reddit.logged + '-' + reddit.post_site, '[' + subdata[0] + ',' + 0 + ']');
     }
+    */
 
     /* DISABLED in MTE.
      * Causes mod pages to take forever to load.  Not sure it has much value.
